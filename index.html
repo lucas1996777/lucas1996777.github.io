@@ -298,78 +298,10 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <span id="more"></span> 
-<h2 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h2><p>基于哈希表的 Map接口的实现。此实现提供所有可选的映射操作，并允许使用 null 值和 null 键。（除了非同步和允许使用 null 之外，HashMap 类与 Hashtable 大致相同。）</p>
-<h2 id="二、结构"><a href="#二、结构" class="headerlink" title="二、结构"></a>二、结构</h2><p>JDK1.8之前：数组+链表</p>
-<p>JDK1.8开始：数组+链表+红黑树</p>
-<blockquote>
-<p>数组里面每个地方都存了Key-Value这样的实例，在Java7叫Entry在Java8中叫Node。<br>如果多个元素算出同一个Hash值，就形成了链表</p>
-</blockquote>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">static class Node&lt;K,V&gt; implements Map.Entry&lt;K,V&gt; &#123;</span><br><span class="line">       final int hash;</span><br><span class="line">       final K key;</span><br><span class="line">       V value;</span><br><span class="line">       Node&lt;K,V&gt; next;</span><br><span class="line"></span><br><span class="line">      ...</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
-
-
-<h2 id="三、存储"><a href="#三、存储" class="headerlink" title="三、存储"></a>三、存储</h2><h3 id="1、初始长度"><a href="#1、初始长度" class="headerlink" title="1、初始长度"></a>1、初始长度</h3><p>默认长度为16，永远是2的幂。如果HashMap初始化的时候指定了容量，HashMap会把这个容量修改为2的倍数，然后创建对应长度的数组。</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">     * The default initial capacity - MUST be a power of two.</span><br><span class="line">     */</span><br><span class="line">    static final int DEFAULT_INITIAL_CAPACITY = 1 &lt;&lt; 4; // aka 16</span><br></pre></td></tr></table></figure>
-<h3 id="2、存储步骤"><a href="#2、存储步骤" class="headerlink" title="2、存储步骤"></a>2、存储步骤</h3><p>1）.本身所有的位置都为null，在put插入的时候会根据key的hash去计算一个index值。<br>2）.如果多个key的hash值相同，就会形成链表。<br>index = key.hashCode() &amp; (length - 1)<br>java8之前：头插法，代码作者认为后插入的值被查找的可能性大一些。头-&gt;尾<br>java8之后：尾插法。因为头插法可能形成环</p>
-<h2 id="四、扩容"><a href="#四、扩容" class="headerlink" title="四、扩容"></a>四、扩容</h2><h3 id="1-扩容时机"><a href="#1-扩容时机" class="headerlink" title="1.扩容时机"></a>1.扩容时机</h3><p>当key的数量大于HashMap长度* 负载因子时则扩容。</p>
-<ul>
-<li>负载因子</li>
-</ul>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">    * The load factor used when none specified in constructor.</span><br><span class="line">    */</span><br><span class="line">   static final float DEFAULT_LOAD_FACTOR = 0.75f;</span><br></pre></td></tr></table></figure>
-<h3 id="2-扩容步骤"><a href="#2-扩容步骤" class="headerlink" title="2.扩容步骤"></a>2.扩容步骤</h3><ul>
-<li>创建一个新的Entry空数组，长度是原数组的2倍。</li>
-<li>遍历原Entry数组，重新计算Hash值 index = key.hashCode() &amp; (length - 1) </li>
-<li>放到新数组。（元素新index只会有两种1.等于之前idnex。2.之前index+原length）</li>
-</ul>
-<h3 id="1、1-7扩容"><a href="#1、1-7扩容" class="headerlink" title="1、1.7扩容"></a>1、1.7扩容</h3><p>使用头插法。容易形成环Infinite Loop</p>
-<h3 id="2、1-8扩容"><a href="#2、1-8扩容" class="headerlink" title="2、1.8扩容"></a>2、1.8扩容</h3><p>使用尾插法和红黑树<br>(1) 红黑树抓换条件</p>
-<ul>
-<li>HashMap元素数&gt;64<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * The smallest table capacity for which bins may be treeified.</span><br><span class="line"> * (Otherwise the table is resized if too many nodes in a bin.)</span><br><span class="line"> * Should be at least 4 * TREEIFY_THRESHOLD to avoid conflicts</span><br><span class="line"> * between resizing and treeification thresholds.</span><br><span class="line"> */</span><br><span class="line">static final int MIN_TREEIFY_CAPACITY = 64;</span><br></pre></td></tr></table></figure></li>
-<li>链表长度要大于等于8<br>根据泊松分布，在负载因子默认为0.75的时候，单个hash槽内元素个数为8的概率小于百万分之一，所以将7作为一个分水岭，等于7的时候不转换，大于等于8的时候才进行转换<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * The bin count threshold for using a tree rather than list for a</span><br><span class="line"> * bin.  Bins are converted to trees when adding an element to a</span><br><span class="line"> * bin with at least this many nodes. The value must be greater</span><br><span class="line"> * than 2 and should be at least 8 to mesh with assumptions in</span><br><span class="line"> * tree removal about conversion back to plain bins upon</span><br><span class="line"> * shrinkage.</span><br><span class="line"> */</span><br><span class="line">static final int TREEIFY_THRESHOLD = 8;</span><br></pre></td></tr></table></figure></li>
-</ul>
-<h2 id="五、取数"><a href="#五、取数" class="headerlink" title="五、取数"></a>五、取数</h2><ul>
-<li>计算index值</li>
-<li>若该位置存在链表则用equal判断</li>
-</ul>
-<h2 id="面试题"><a href="#面试题" class="headerlink" title="面试题"></a>面试题</h2><p>1.是否JDK8以后可以在多线程中使用？<br>虽然扩容不会成环，但无法保证上一秒put的值，下一秒get的时候还是原值</p>
-<p>2.长度为什么是2的幂？<br>因为在使用不是2的幂的数字的时候，Length-1的值是所有二进制位全为1，这种情况下，index的结果等同于HashCode后几位的值。<br>只要输入的HashCode本身分布均匀，Hash算法的结果就是均匀的。<br>这是为了实现均匀分布。</p>
-<p>3.如何处理HashMap在线程安全的场景？<br>一般都会使用HashTable或者ConcurrentHashMap，但是因为前者的并发度的原因基本上没啥使用场景了，所以存在线程不安全的场景我们都使用的是ConcurrentHashMap。</p>
-<blockquote>
-<p>HashTable 直接在方法上锁，并发度很低，最多同时允许一个线程访问</p>
-</blockquote>
-<p>4.HashMap和HashTable区别  </p>
-<table>
-<thead>
-<tr>
-<th>HashMap</th>
-<th>HashTable</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>线程不安全</td>
-<td>线程安全</td>
-</tr>
-<tr>
-<td>键和值可以是NULL</td>
-<td>键和值不能是NULL</td>
-</tr>
-<tr>
-<td>默认初始容量是16</td>
-<td>默认初始容量是11</td>
-</tr>
-<tr>
-<td>当前容量翻倍</td>
-<td>当前容量翻倍 + 1</td>
-</tr>
-<tr>
-<td>Iterator 迭代器是 fail-fast</td>
-<td>Enumerator 不是 fail-fast</td>
-</tr>
-</tbody></table>
-<ul>
-<li>快速失败（fail—fast）是java集合中的一种机制， 在用迭代器遍历一个集合对象时，如果遍历过程中对集合对象的内容进行了修改（增加、删除、修改），则会抛出Concurrent Modification Exception。</li>
-</ul>
-
+        <p>1</p>
+        
+          <a class="article-more-a" href="/2021/06/11/HashMap/#more">展开全文 >></a>
+        
       
 
       
@@ -1121,6 +1053,119 @@
 
 
   
+    <article id="post-【学习笔记】Spring2_AOP" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/06/29/%E3%80%90%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E3%80%91Spring2_AOP/">【学习笔记】Spring2_AOP</a>
+    </h1>
+  
+
+        
+        <a href="/2020/06/29/%E3%80%90%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0%E3%80%91Spring2_AOP/" class="archive-article-date">
+  	<time datetime="2020-06-28T16:00:00.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-06-29</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <span id="more"></span>
+<h1 id="AOP-面向切面编程"><a href="#AOP-面向切面编程" class="headerlink" title="AOP 面向切面编程"></a>AOP 面向切面编程</h1><blockquote>
+<p>是OOP的延续，降低耦合<br><img src="en-resource://database/1000:1" alt="4a32ce7fb3dad3e9a12312720e434290.png"></p>
+</blockquote>
+<h2 id="底层原理"><a href="#底层原理" class="headerlink" title="底层原理"></a>底层原理</h2><h3 id="动态代理"><a href="#动态代理" class="headerlink" title="动态代理"></a>动态代理</h3><h4 id="JDK动态代理（有接口）"><a href="#JDK动态代理（有接口）" class="headerlink" title="JDK动态代理（有接口）"></a>JDK动态代理（有接口）</h4><p>如图想在登录方法中增加权限判断<br><img src="en-resource://database/1002:1" alt="7b2c6675447a046f75fb29aaacadbdb2.png"></p>
+<h5 id="JDK动态代理实现"><a href="#JDK动态代理实现" class="headerlink" title="JDK动态代理实现"></a>JDK动态代理实现</h5><ol>
+<li>创建实现类的代理对象</li>
+</ol>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br></pre></td><td class="code"><pre><span class="line">package com.it;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.it.dao.UserDao;</span><br><span class="line"><span class="keyword">import</span> com.it.dao.UserDaoImpl;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.InvocationHandler;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.Method;</span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.Proxy;</span><br><span class="line"><span class="keyword">import</span> java.util.Arrays;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">JDKProxy</span> &#123;</span></span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">        UserDaoImpl userDao = <span class="keyword">new</span> <span class="built_in">UserDaoImpl</span>();</span><br><span class="line">        <span class="comment">//通常如下代码是 接口  = new 实现类 现在为JDK动态代理创建</span></span><br><span class="line">        <span class="comment">//三个参数：</span></span><br><span class="line">        <span class="comment">//loader: 用哪个类加载器去加载代理对象</span></span><br><span class="line">        <span class="comment">//interfaces:动态代理类需要实现的接口</span></span><br><span class="line">        <span class="comment">//h:动态代理方法在执行时，会调用h里面的invoke方法去执行</span></span><br><span class="line">        <span class="comment">//本人理解参数：（加载器，接口，自己重写的增强方法（UserDaoProxy））</span></span><br><span class="line">        UserDao  dao = (UserDao)Proxy.<span class="built_in">newProxyInstance</span>(JDKProxy.class.<span class="built_in">getClassLoader</span>(), <span class="keyword">new</span> Class[]&#123;UserDao.class&#125;,<span class="keyword">new</span> <span class="built_in">UserDaoProxy</span>(userDao));</span><br><span class="line">        <span class="keyword">int</span> res = dao.<span class="built_in">add</span>(<span class="number">1</span>,<span class="number">2</span>);</span><br><span class="line">        System.out.<span class="built_in">println</span>(<span class="string">&quot;result:&quot;</span>+res);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * 增强方法实现</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">class</span> <span class="title">UserDaoProxy</span> <span class="title">implements</span> <span class="title">InvocationHandler</span>&#123;</span></span><br><span class="line">    <span class="comment">//1.把需要增强方法传递过来</span></span><br><span class="line">    <span class="keyword">private</span> Object obj;</span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="title">UserDaoProxy</span><span class="params">(Object obj)</span></span>&#123;</span><br><span class="line">        <span class="keyword">this</span>.obj=obj;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">//增强部分</span></span><br><span class="line">    @<span class="function">Override</span></span><br><span class="line"><span class="function">    <span class="keyword">public</span> Object <span class="title">invoke</span><span class="params">(Object proxy, Method method, Object[] args)</span> throws Throwable </span>&#123;</span><br><span class="line">        <span class="comment">//方法之前执行</span></span><br><span class="line">        System.out.<span class="built_in">println</span>(<span class="string">&quot;before...&quot;</span>+method.<span class="built_in">getName</span>()+<span class="string">&quot;:传参...&quot;</span>+ Arrays.<span class="built_in">toString</span>(args));</span><br><span class="line"></span><br><span class="line">        <span class="comment">//执行被增强方法</span></span><br><span class="line">        Object res = method.<span class="built_in">invoke</span>(obj,args);</span><br><span class="line"></span><br><span class="line">        <span class="comment">//方法之后</span></span><br><span class="line">        System.out.<span class="built_in">println</span>(<span class="string">&quot;after...&quot;</span>+obj);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">return</span> res;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="CGLIB动态代理（没接口）"><a href="#CGLIB动态代理（没接口）" class="headerlink" title="CGLIB动态代理（没接口）"></a>CGLIB动态代理（没接口）</h4><p>创建子类代理对象，增强方法</p>
+<h2 id="AOP术语"><a href="#AOP术语" class="headerlink" title="AOP术语"></a>AOP术语</h2><h3 id="连接点"><a href="#连接点" class="headerlink" title="连接点"></a>连接点</h3><p>类里可以被增强的方法</p>
+<h3 id="切入点"><a href="#切入点" class="headerlink" title="切入点"></a>切入点</h3><p>实际被真正增强的方法</p>
+<h3 id="通知"><a href="#通知" class="headerlink" title="通知"></a>通知</h3><p>实际被增强的代码部分就叫做通知，也叫增强</p>
+<h4 id="前置通知"><a href="#前置通知" class="headerlink" title="前置通知"></a>前置通知</h4><p>增强方法前执行</p>
+<h4 id="后置通知"><a href="#后置通知" class="headerlink" title="后置通知"></a>后置通知</h4><p>增强方法后执行</p>
+<h4 id="环绕通知"><a href="#环绕通知" class="headerlink" title="环绕通知"></a>环绕通知</h4><p>前置＋后置</p>
+<h4 id="异常通知"><a href="#异常通知" class="headerlink" title="异常通知"></a>异常通知</h4><p>有异常执行</p>
+<h4 id="最终通知"><a href="#最终通知" class="headerlink" title="最终通知"></a>最终通知</h4><p>有没有异常都会执行</p>
+<h4 id="切面"><a href="#切面" class="headerlink" title="切面"></a>切面</h4><p>把通知加到切入点的过程</p>
+<h2 id="AOP操作"><a href="#AOP操作" class="headerlink" title="AOP操作"></a>AOP操作</h2><p>Spring框架中一般基于AspectJ实现AOP操作</p>
+<h3 id="AspectJ"><a href="#AspectJ" class="headerlink" title="AspectJ"></a>AspectJ</h3><p> 不是Spring组成部分，独立AOP框架，一般把他和Spring框架一起使用，进行AOP操作</p>
+<h3 id="基于AspectJ操作两种AOP方式"><a href="#基于AspectJ操作两种AOP方式" class="headerlink" title="基于AspectJ操作两种AOP方式"></a>基于AspectJ操作两种AOP方式</h3><h4 id="基于XML配置文件实现"><a href="#基于XML配置文件实现" class="headerlink" title="基于XML配置文件实现"></a>基于XML配置文件实现</h4><h4 id="基于注解方式（使用）"><a href="#基于注解方式（使用）" class="headerlink" title="基于注解方式（使用）"></a>基于注解方式（使用）</h4><h3 id="项目中操作AOP"><a href="#项目中操作AOP" class="headerlink" title="项目中操作AOP"></a>项目中操作AOP</h3><h4 id="1-引入spring-aspects-5-3-8-jar（Spring包中）-和他的三个依赖JAR包（不在spring中）"><a href="#1-引入spring-aspects-5-3-8-jar（Spring包中）-和他的三个依赖JAR包（不在spring中）" class="headerlink" title="1.引入spring-aspects-5.3.8.jar（Spring包中） 和他的三个依赖JAR包（不在spring中）"></a>1.引入spring-aspects-5.3.8.jar（Spring包中） 和他的三个依赖JAR包（不在spring中）</h4><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!--AspcctJ依赖--&gt;</span></span><br><span class="line">    <span class="comment">&lt;!-- https://mvnrepository.com/artifact/org.aspectj/aspectjweaver --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.aspectj<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>aspectjweaver<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.6.8<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">&lt;!-- https://mvnrepository.com/artifact/aopalliance/aopalliance --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>aopalliance<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>aopalliance<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">&lt;!-- https://mvnrepository.com/artifact/net.sourceforge.cglib/com.springsource.net.sf.cglib --&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>net.sourceforge.cglib<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>com.springsource.net.sf.cglib<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">version</span>&gt;</span>2.2.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<h4 id="2-配置AOP需要用到切入点表达式"><a href="#2-配置AOP需要用到切入点表达式" class="headerlink" title="2. 配置AOP需要用到切入点表达式"></a>2. 配置AOP需要用到切入点表达式</h4><p>（1）切入点表达式作用：要对哪个类的哪个方法增强<br>（2）语法结构：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">execution([权限修饰符][返回类型][方法名称]([参数列表]))</span><br></pre></td></tr></table></figure>
+<p>举例1：对com.it.UserDao增强add方法</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">execution(* com.it.UserDao.add(...))</span><br></pre></td></tr></table></figure>
+<p>举例2：对com.it.UserDao所有方法增强</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">execution(* com.it.UserDao.*(...))</span><br></pre></td></tr></table></figure>
+
+<h4 id="3-AOP操作"><a href="#3-AOP操作" class="headerlink" title="3. AOP操作"></a>3. AOP操作</h4><h5 id="1-创建类，创建需增强方法"><a href="#1-创建类，创建需增强方法" class="headerlink" title="1.创建类，创建需增强方法"></a>1.创建类，创建需增强方法</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.it;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.springframework.stereotype.Component;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">UserDao</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">add</span><span class="params">(String s1,String s2)</span></span>&#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;add()...&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> s1+<span class="string">&quot;:&quot;</span>+s2;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h5 id="2-创建增强类，写增强逻辑"><a href="#2-创建增强类，写增强逻辑" class="headerlink" title="2.创建增强类，写增强逻辑"></a>2.创建增强类，写增强逻辑</h5><p>UserProxy.java 后面又详细代码</p>
+<h5 id="3-进行通知配置"><a href="#3-进行通知配置" class="headerlink" title="3.进行通知配置"></a>3.进行通知配置</h5><h6 id="（1）Spring配置文件中，开启注解扫描"><a href="#（1）Spring配置文件中，开启注解扫描" class="headerlink" title="（1）Spring配置文件中，开启注解扫描"></a>（1）Spring配置文件中，开启注解扫描</h6><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">beans</span> <span class="attr">xmlns</span>=<span class="string">&quot;http://www.springframework.org/schema/beans&quot;</span></span></span><br><span class="line"><span class="tag">       <span class="attr">xmlns:xsi</span>=<span class="string">&quot;http://www.w3.org/2001/XMLSchema-instance&quot;</span></span></span><br><span class="line"><span class="tag">       <span class="attr">xmlns:context</span>=<span class="string">&quot;http://www.springframework.org/schema/context&quot;</span></span></span><br><span class="line"><span class="tag">       <span class="attr">xmlns:aop</span>=<span class="string">&quot;http://www.springframework.org/schema/aop&quot;</span></span></span><br><span class="line"><span class="tag">       <span class="attr">xsi:schemaLocation</span>=<span class="string">&quot;http://www.springframework.org/schema/beans</span></span></span><br><span class="line"><span class="string"><span class="tag">       http://www.springframework.org/schema/beans/spring-beans.xsd</span></span></span><br><span class="line"><span class="string"><span class="tag">       http://www.springframework.org/schema/context</span></span></span><br><span class="line"><span class="string"><span class="tag">       http://www.springframework.org/schema/context/spring-context.xsd</span></span></span><br><span class="line"><span class="string"><span class="tag">        http://www.springframework.org/schema/aop</span></span></span><br><span class="line"><span class="string"><span class="tag">       http://www.springframework.org/schema/aop/spring-aop.xsd&quot;</span>&gt;</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="comment">&lt;!--开启注解扫描--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">context:component-scan</span> <span class="attr">base-package</span>=<span class="string">&quot;com.it&quot;</span>&gt;</span><span class="tag">&lt;/<span class="name">context:component-scan</span>&gt;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">&lt;!--开启Aspect生成代理对象--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">aop:aspectj-autoproxy</span>&gt;</span><span class="tag">&lt;/<span class="name">aop:aspectj-autoproxy</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">beans</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h6 id="（2）使用注解创建UserDao和UserProxy对象"><a href="#（2）使用注解创建UserDao和UserProxy对象" class="headerlink" title="（2）使用注解创建UserDao和UserProxy对象"></a>（2）使用注解创建UserDao和UserProxy对象</h6><p>在对象上增加@Component标签<br><img src="en-resource://database/1004:1" alt="2f319bbdfff2b45a074eb7a296f1bf4e.png"></p>
+<h6 id="（3）在增强类上添加注解-Aspect"><a href="#（3）在增强类上添加注解-Aspect" class="headerlink" title="（3）在增强类上添加注解@Aspect"></a>（3）在增强类上添加注解@Aspect</h6><p><img src="en-resource://database/1006:1" alt="4ee14ac014ff06a9807d4e2142f03b8c.png"></p>
+<h6 id="（4）在Spring配置文件中开启生成代理对象"><a href="#（4）在Spring配置文件中开启生成代理对象" class="headerlink" title="（4）在Spring配置文件中开启生成代理对象"></a>（4）在Spring配置文件中开启生成代理对象</h6><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">&lt;!--开启Aspect生成代理对象--&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">aop:aspectj-autoproxy</span>&gt;</span><span class="tag">&lt;/<span class="name">aop:aspectj-autoproxy</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h5 id="4-配置不同类型通知"><a href="#4-配置不同类型通知" class="headerlink" title="4.配置不同类型通知"></a>4.配置不同类型通知</h5><h6 id="（1）在增强类中，在作为通知方法上面增加通知注解，使用切入表达式配置"><a href="#（1）在增强类中，在作为通知方法上面增加通知注解，使用切入表达式配置" class="headerlink" title="（1）在增强类中，在作为通知方法上面增加通知注解，使用切入表达式配置"></a>（1）在增强类中，在作为通知方法上面增加通知注解，使用切入表达式配置</h6><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.it;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.aspectj.lang.ProceedingJoinPoint;</span><br><span class="line"><span class="keyword">import</span> org.aspectj.lang.annotation.*;</span><br><span class="line"><span class="keyword">import</span> org.springframework.stereotype.Component;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="meta">@Aspect</span><span class="comment">//表示要生成代理对象</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">UserProxy</span> </span>&#123;</span><br><span class="line">    <span class="comment">//前置通知</span></span><br><span class="line">    <span class="comment">//@Bedore-前置通知</span></span><br><span class="line">    <span class="meta">@Before(value = &quot;execution(* com.it.UserDao.add(..))&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">before</span><span class="params">()</span></span>&#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;before...&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//方法之后执行（最终通知，有没有异常都返回）</span></span><br><span class="line">    <span class="meta">@After(value = &quot;execution(* com.it.UserDao.add(..))&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">after</span><span class="params">()</span></span>&#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;after...&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//后置通知（方法返回值之后执行）</span></span><br><span class="line">    <span class="meta">@AfterReturning(value = &quot;execution(* com.it.UserDao.add(..))&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">afterReturning</span><span class="params">()</span></span>&#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;afterReturning...&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//异常通知</span></span><br><span class="line">    <span class="meta">@AfterThrowing(value = &quot;execution(* com.it.UserDao.add(..))&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">afterThrowing</span><span class="params">()</span></span>&#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;afterThrowing...&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="meta">@Around(value = &quot;execution(* com.it.UserDao.add(..))&quot;)</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">around</span><span class="params">(ProceedingJoinPoint proceedingJoinPoint)</span> <span class="keyword">throws</span> Throwable </span>&#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;环绕前...&quot;</span>);</span><br><span class="line">        <span class="comment">//被增强方法</span></span><br><span class="line">        proceedingJoinPoint.proceed();</span><br><span class="line"></span><br><span class="line">        System.out.println(<span class="string">&quot;环绕后...&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<h5 id="5-测试类"><a href="#5-测试类" class="headerlink" title="5.测试类"></a>5.测试类</h5><h6 id="无异常测试"><a href="#无异常测试" class="headerlink" title="无异常测试"></a>无异常测试</h6><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> com.it.UserDao;</span><br><span class="line"><span class="keyword">import</span> org.springframework.context.ApplicationContext;</span><br><span class="line"><span class="keyword">import</span> org.springframework.context.support.ClassPathXmlApplicationContext;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Test</span> </span>&#123;</span><br><span class="line"><span class="meta">@org</span>.junit.<span class="function">Test</span></span><br><span class="line"><span class="function">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title">test1</span><span class="params">()</span></span>&#123;</span><br><span class="line">        ApplicationContext context = <span class="keyword">new</span> ClassPathXmlApplicationContext(<span class="string">&quot;bean1.xml&quot;</span>);</span><br><span class="line">        UserDao user = context.getBean(<span class="string">&quot;userDao&quot;</span>,UserDao.class);</span><br><span class="line">        user.add(<span class="string">&quot;Hello&quot;</span>,<span class="string">&quot;World&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h6 id="输出结果"><a href="#输出结果" class="headerlink" title="输出结果"></a>输出结果</h6><p><img src="en-resource://database/1008:1" alt="ec716413ab826ee5105ca7375ca7a8b7.png"></p>
+<h6 id="异常测试"><a href="#异常测试" class="headerlink" title="异常测试"></a>异常测试</h6><p>测试类不变，被增强方法增加异常 代码</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.it;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.springframework.stereotype.Component;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">UserDao</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> String <span class="title">add</span><span class="params">(String s1,String s2)</span></span>&#123;</span><br><span class="line">        <span class="keyword">int</span> i = <span class="number">1</span>/<span class="number">0</span>;<span class="comment">//异常</span></span><br><span class="line">        System.out.println(<span class="string">&quot;add()...&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> s1+<span class="string">&quot;:&quot;</span>+s2;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+<h6 id="输出结果-1"><a href="#输出结果-1" class="headerlink" title="输出结果"></a>输出结果</h6><p><img src="en-resource://database/1010:1" alt="7334c904cdf18a3937743a1af14d093d.png"></p>
+<h4 id="AOP优化"><a href="#AOP优化" class="headerlink" title="AOP优化"></a>AOP优化</h4><h5 id="相同切入点优化（execution-com-it-UserDao-add"><a href="#相同切入点优化（execution-com-it-UserDao-add" class="headerlink" title="相同切入点优化（execution(* com.it.UserDao.add(..))"></a>相同切入点优化（execution(* com.it.UserDao.add(..))</h5><p>测试执行效果相同</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">@Pointcut(value = &quot;execution(* com.it.UserDao.add(..))&quot;)</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">pointDemo</span><span class="params">()</span></span>&#123;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment">//前置通知</span></span><br><span class="line"><span class="comment">//@Bedore-前置通知</span></span><br><span class="line"><span class="meta">@Before(value = &quot;pointDemo()&quot;)</span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">before</span><span class="params">()</span></span>&#123;</span><br><span class="line">    System.out.println(<span class="string">&quot;before...&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h5 id="多个增强类增强同一个方法，可设置优先级"><a href="#多个增强类增强同一个方法，可设置优先级" class="headerlink" title="多个增强类增强同一个方法，可设置优先级"></a>多个增强类增强同一个方法，可设置优先级</h5><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.it;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.aspectj.lang.annotation.After;</span><br><span class="line"><span class="keyword">import</span> org.aspectj.lang.annotation.Aspect;</span><br><span class="line"><span class="keyword">import</span> org.aspectj.lang.annotation.Before;</span><br><span class="line"><span class="keyword">import</span> org.springframework.core.annotation.Order;</span><br><span class="line"><span class="keyword">import</span> org.springframework.stereotype.Component;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Component</span></span><br><span class="line"><span class="meta">@Aspect</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">PersonProxy</span> </span>&#123;</span><br><span class="line">    <span class="meta">@Before(value = &quot;execution(* com.it.UserDao.add(..))&quot;)</span></span><br><span class="line">    <span class="meta">@Order(1)</span><span class="comment">//值越小 优先级越高（前置方法更靠前，后置方法更靠后）</span></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">after</span><span class="params">()</span></span>&#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;PersonProxy Before...&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+<h4 id="用配置文件实现aspectJ"><a href="#用配置文件实现aspectJ" class="headerlink" title="用配置文件实现aspectJ"></a>用配置文件实现aspectJ</h4><p>注解也可以创建，这里没有写详细步骤</p>
+<h4 id="若不用xml写Spring需要加入标签"><a href="#若不用xml写Spring需要加入标签" class="headerlink" title="若不用xml写Spring需要加入标签"></a>若不用xml写Spring需要加入标签</h4><p>@EnableAspectJAutoProxt（proxyTargetClass=”true”）来开启AspectJ扫描</p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
+
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-【学习笔记】Spring1_IOC" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -1403,68 +1448,6 @@ service层：<figure class="highlight java"><table><tr><td class="gutter"><pre><
 <h2 id="二级标题"><a href="#二级标题" class="headerlink" title="二级标题"></a>二级标题</h2>
         
           <a class="article-more-a" href="/2020/05/23/Markdown%E8%AF%AD%E6%B3%95/#more">展开全文 >></a>
-        
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-hello-world" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2020/05/20/hello-world/">Hello World</a>
-    </h1>
-  
-
-        
-        <a href="/2020/05/20/hello-world/" class="archive-article-date">
-  	<time datetime="2020-05-20T13:41:56.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-05-20</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>Welcome to <a target="_blank" rel="noopener" href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a target="_blank" rel="noopener" href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a target="_blank" rel="noopener" href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a target="_blank" rel="noopener" href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3>
-        
-          <a class="article-more-a" href="/2020/05/20/hello-world/#more">展开全文 >></a>
         
       
 
