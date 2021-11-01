@@ -298,10 +298,78 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>1</p>
-        
-          <a class="article-more-a" href="/2021/06/11/HashMap/#more">展开全文 >></a>
-        
+        <span id="more"></span> 
+<h2 id="一、简介"><a href="#一、简介" class="headerlink" title="一、简介"></a>一、简介</h2><p>基于哈希表的 Map接口的实现。此实现提供所有可选的映射操作，并允许使用 null 值和 null 键。（除了非同步和允许使用 null 之外，HashMap 类与 Hashtable 大致相同。）</p>
+<h2 id="二、结构"><a href="#二、结构" class="headerlink" title="二、结构"></a>二、结构</h2><p>JDK1.8之前：数组+链表</p>
+<p>JDK1.8开始：数组+链表+红黑树</p>
+<blockquote>
+<p>数组里面每个地方都存了Key-Value这样的实例，在Java7叫Entry在Java8中叫Node。<br>如果多个元素算出同一个Hash值，就形成了链表</p>
+</blockquote>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">static class Node&lt;K,V&gt; implements Map.Entry&lt;K,V&gt; &#123;</span><br><span class="line">       final int hash;</span><br><span class="line">       final K key;</span><br><span class="line">       V value;</span><br><span class="line">       Node&lt;K,V&gt; next;</span><br><span class="line"></span><br><span class="line">      ...</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+
+<h2 id="三、存储"><a href="#三、存储" class="headerlink" title="三、存储"></a>三、存储</h2><h3 id="1、初始长度"><a href="#1、初始长度" class="headerlink" title="1、初始长度"></a>1、初始长度</h3><p>默认长度为16，永远是2的幂。如果HashMap初始化的时候指定了容量，HashMap会把这个容量修改为2的倍数，然后创建对应长度的数组。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">     * The default initial capacity - MUST be a power of two.</span><br><span class="line">     */</span><br><span class="line">    static final int DEFAULT_INITIAL_CAPACITY = 1 &lt;&lt; 4; // aka 16</span><br></pre></td></tr></table></figure>
+<h3 id="2、存储步骤"><a href="#2、存储步骤" class="headerlink" title="2、存储步骤"></a>2、存储步骤</h3><p>1）.本身所有的位置都为null，在put插入的时候会根据key的hash去计算一个index值。<br>2）.如果多个key的hash值相同，就会形成链表。<br>index = key.hashCode() &amp; (length - 1)<br>java8之前：头插法，代码作者认为后插入的值被查找的可能性大一些。头-&gt;尾<br>java8之后：尾插法。因为头插法可能形成环</p>
+<h2 id="四、扩容"><a href="#四、扩容" class="headerlink" title="四、扩容"></a>四、扩容</h2><h3 id="1-扩容时机"><a href="#1-扩容时机" class="headerlink" title="1.扩容时机"></a>1.扩容时机</h3><p>当key的数量大于HashMap长度* 负载因子时则扩容。</p>
+<ul>
+<li>负载因子</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line">    * The load factor used when none specified in constructor.</span><br><span class="line">    */</span><br><span class="line">   static final float DEFAULT_LOAD_FACTOR = 0.75f;</span><br></pre></td></tr></table></figure>
+<h3 id="2-扩容步骤"><a href="#2-扩容步骤" class="headerlink" title="2.扩容步骤"></a>2.扩容步骤</h3><ul>
+<li>创建一个新的Entry空数组，长度是原数组的2倍。</li>
+<li>遍历原Entry数组，重新计算Hash值 index = key.hashCode() &amp; (length - 1) </li>
+<li>放到新数组。（元素新index只会有两种1.等于之前idnex。2.之前index+原length）</li>
+</ul>
+<h3 id="1、1-7扩容"><a href="#1、1-7扩容" class="headerlink" title="1、1.7扩容"></a>1、1.7扩容</h3><p>使用头插法。容易形成环Infinite Loop</p>
+<h3 id="2、1-8扩容"><a href="#2、1-8扩容" class="headerlink" title="2、1.8扩容"></a>2、1.8扩容</h3><p>使用尾插法和红黑树<br>(1) 红黑树抓换条件</p>
+<ul>
+<li>HashMap元素数&gt;64<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * The smallest table capacity for which bins may be treeified.</span><br><span class="line"> * (Otherwise the table is resized if too many nodes in a bin.)</span><br><span class="line"> * Should be at least 4 * TREEIFY_THRESHOLD to avoid conflicts</span><br><span class="line"> * between resizing and treeification thresholds.</span><br><span class="line"> */</span><br><span class="line">static final int MIN_TREEIFY_CAPACITY = 64;</span><br></pre></td></tr></table></figure></li>
+<li>链表长度要大于等于8<br>根据泊松分布，在负载因子默认为0.75的时候，单个hash槽内元素个数为8的概率小于百万分之一，所以将7作为一个分水岭，等于7的时候不转换，大于等于8的时候才进行转换<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">/**</span><br><span class="line"> * The bin count threshold for using a tree rather than list for a</span><br><span class="line"> * bin.  Bins are converted to trees when adding an element to a</span><br><span class="line"> * bin with at least this many nodes. The value must be greater</span><br><span class="line"> * than 2 and should be at least 8 to mesh with assumptions in</span><br><span class="line"> * tree removal about conversion back to plain bins upon</span><br><span class="line"> * shrinkage.</span><br><span class="line"> */</span><br><span class="line">static final int TREEIFY_THRESHOLD = 8;</span><br></pre></td></tr></table></figure></li>
+</ul>
+<h2 id="五、取数"><a href="#五、取数" class="headerlink" title="五、取数"></a>五、取数</h2><ul>
+<li>计算index值</li>
+<li>若该位置存在链表则用equal判断</li>
+</ul>
+<h2 id="面试题"><a href="#面试题" class="headerlink" title="面试题"></a>面试题</h2><p>1.是否JDK8以后可以在多线程中使用？<br>虽然扩容不会成环，但无法保证上一秒put的值，下一秒get的时候还是原值</p>
+<p>2.长度为什么是2的幂？<br>因为在使用不是2的幂的数字的时候，Length-1的值是所有二进制位全为1，这种情况下，index的结果等同于HashCode后几位的值。<br>只要输入的HashCode本身分布均匀，Hash算法的结果就是均匀的。<br>这是为了实现均匀分布。</p>
+<p>3.如何处理HashMap在线程安全的场景？<br>一般都会使用HashTable或者ConcurrentHashMap，但是因为前者的并发度的原因基本上没啥使用场景了，所以存在线程不安全的场景我们都使用的是ConcurrentHashMap。</p>
+<blockquote>
+<p>HashTable 直接在方法上锁，并发度很低，最多同时允许一个线程访问</p>
+</blockquote>
+<p>4.HashMap和HashTable区别  </p>
+<table>
+<thead>
+<tr>
+<th>HashMap</th>
+<th>HashTable</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>线程不安全</td>
+<td>线程安全</td>
+</tr>
+<tr>
+<td>键和值可以是NULL</td>
+<td>键和值不能是NULL</td>
+</tr>
+<tr>
+<td>默认初始容量是16</td>
+<td>默认初始容量是11</td>
+</tr>
+<tr>
+<td>当前容量翻倍</td>
+<td>当前容量翻倍 + 1</td>
+</tr>
+<tr>
+<td>Iterator 迭代器是 fail-fast</td>
+<td>Enumerator 不是 fail-fast</td>
+</tr>
+</tbody></table>
+<ul>
+<li>快速失败（fail—fast）是java集合中的一种机制， 在用迭代器遍历一个集合对象时，如果遍历过程中对集合对象的内容进行了修改（增加、删除、修改），则会抛出Concurrent Modification Exception。</li>
+</ul>
+
       
 
       
